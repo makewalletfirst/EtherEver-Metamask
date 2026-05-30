@@ -1,0 +1,127 @@
+--- a/node_modules/@metamask/transaction-controller/dist/helpers/AccountsApiRemoteTransactionSource.mjs
++++ b/node_modules/@metamask/transaction-controller/dist/helpers/AccountsApiRemoteTransactionSource.mjs
+@@ -19,7 +19,45 @@
+ import { CHAIN_IDS } from "../constants.mjs";
+ import { createModuleLogger, incomingTransactionsLogger } from "../logger.mjs";
+ import { TransactionStatus, TransactionType } from "../types.mjs";
++// [EtherEver] EtherEver L1 (chainId 0xe2c3 = 58051) — Blockscout etherscan-compatible API
++const ETHEREVER_CHAIN_ID_HEX = '0xe2c3';
++const ETHEREVER_CHAIN_ID_DEC = 58051;
++const ETHEREVER_API_BASE = 'https://etherever.ever-chain.xyz/api';
++
++async function _ethereverFetchIncoming(address) {
++    const url = `${ETHEREVER_API_BASE}?module=account&action=txlist&address=${address}&page=1&offset=50&sort=desc`;
++    const out = [];
++    try {
++        const resp = await fetch(url);
++        const json = await resp.json();
++        if (json && json.status === '1' && Array.isArray(json.result)) {
++            for (const tx of json.result) {
++                out.push({
++                    blockNumber: parseInt(tx.blockNumber, 10),
++                    chainId: ETHEREVER_CHAIN_ID_DEC,
++                    hash: tx.hash,
++                    timestamp: new Date(parseInt(tx.timeStamp, 10) * 1000).toISOString(),
++                    from: tx.from,
++                    to: tx.to,
++                    value: tx.value,
++                    gas: tx.gas,
++                    gasPrice: tx.gasPrice,
++                    gasUsed: tx.gasUsed,
++                    nonce: tx.nonce,
++                    methodId: tx.input && tx.input.length >= 10 ? tx.input.slice(0, 10) : '0x',
++                    isError: tx.isError === '1',
++                    isTransfer: false,
++                });
++            }
++        }
++    } catch (e) {
++        // 무음 실패 — 메타마스크 자체 API 도 비슷하게 throw 안 함
++    }
++    return out;
++}
++
+ export const SUPPORTED_CHAIN_IDS = [
++    ETHEREVER_CHAIN_ID_HEX,
+     CHAIN_IDS.MAINNET,
+     CHAIN_IDS.POLYGON,
+     CHAIN_IDS.BSC,
+@@ -56,6 +94,16 @@
+ _AccountsApiRemoteTransactionSource_instances = new WeakSet(), _AccountsApiRemoteTransactionSource_queryTransactions = async function _AccountsApiRemoteTransactionSource_queryTransactions(request, chainIds) {
+     const { address, tags } = request;
+     const transactions = [];
++    // [EtherEver] Blockscout 으로 받은 incoming tx 먼저 채움.
++    if (chainIds && chainIds.includes && chainIds.includes(ETHEREVER_CHAIN_ID_HEX)) {
++        const fromBs = await _ethereverFetchIncoming(address);
++        transactions.push(...fromBs);
++        // EtherEver 만 활성인 경우 메타마스크 자체 API 호출 의미 없음 — early return
++        const onlyEverEver = chainIds.length === 1;
++        if (onlyEverEver) {
++            return transactions;
++        }
++    }
+     try {
+         const response = await getAccountTransactions({
+             address,
+--- a/node_modules/@metamask/transaction-controller/dist/helpers/AccountsApiRemoteTransactionSource.cjs
++++ b/node_modules/@metamask/transaction-controller/dist/helpers/AccountsApiRemoteTransactionSource.cjs
+@@ -18,7 +18,43 @@
+ const constants_1 = require("../constants.cjs");
+ const logger_1 = require("../logger.cjs");
+ const types_1 = require("../types.cjs");
++// [EtherEver] EtherEver L1 (chainId 0xe2c3 = 58051) — Blockscout etherscan-compatible API
++const ETHEREVER_CHAIN_ID_HEX = '0xe2c3';
++const ETHEREVER_CHAIN_ID_DEC = 58051;
++const ETHEREVER_API_BASE = 'https://etherever.ever-chain.xyz/api';
++
++async function _ethereverFetchIncoming(address) {
++    const url = ETHEREVER_API_BASE + '?module=account&action=txlist&address=' + address + '&page=1&offset=50&sort=desc';
++    const out = [];
++    try {
++        const resp = await fetch(url);
++        const json = await resp.json();
++        if (json && json.status === '1' && Array.isArray(json.result)) {
++            for (const tx of json.result) {
++                out.push({
++                    blockNumber: parseInt(tx.blockNumber, 10),
++                    chainId: ETHEREVER_CHAIN_ID_DEC,
++                    hash: tx.hash,
++                    timestamp: new Date(parseInt(tx.timeStamp, 10) * 1000).toISOString(),
++                    from: tx.from,
++                    to: tx.to,
++                    value: tx.value,
++                    gas: tx.gas,
++                    gasPrice: tx.gasPrice,
++                    gasUsed: tx.gasUsed,
++                    nonce: tx.nonce,
++                    methodId: tx.input && tx.input.length >= 10 ? tx.input.slice(0, 10) : '0x',
++                    isError: tx.isError === '1',
++                    isTransfer: false,
++                });
++            }
++        }
++    } catch (e) {}
++    return out;
++}
++
+ exports.SUPPORTED_CHAIN_IDS = [
++    ETHEREVER_CHAIN_ID_HEX,
+     constants_1.CHAIN_IDS.MAINNET,
+     constants_1.CHAIN_IDS.POLYGON,
+     constants_1.CHAIN_IDS.BSC,
+@@ -56,6 +92,15 @@
+ _AccountsApiRemoteTransactionSource_instances = new WeakSet(), _AccountsApiRemoteTransactionSource_queryTransactions = async function _AccountsApiRemoteTransactionSource_queryTransactions(request, chainIds) {
+     const { address, tags } = request;
+     const transactions = [];
++    // [EtherEver] Blockscout 으로 받은 incoming tx 먼저 채움.
++    if (chainIds && chainIds.includes && chainIds.includes(ETHEREVER_CHAIN_ID_HEX)) {
++        const fromBs = await _ethereverFetchIncoming(address);
++        transactions.push(...fromBs);
++        // EtherEver 만 활성인 경우 메타마스크 자체 API 호출 의미 없음 — early return
++        if (chainIds.length === 1) {
++            return transactions;
++        }
++    }
+     try {
+         const response = await (0, accounts_api_1.getAccountTransactions)({
+             address,
