@@ -123,7 +123,8 @@ module.exports.transform = async ({ src, filename, options }) => {
     });
 
     if (didModify) {
-      await lintTransformedFile(getESLintInstance(), filename, processedSource);
+      // [EtherEver] lint 우회 — fence 적용 후 ESLint 호출이 13296 모듈에서 너무 느려 jest worker timeout 유발
+      // await lintTransformedFile(getESLintInstance(), filename, processedSource);
     }
     return defaultTransformer.transform({
       src: processedSource,

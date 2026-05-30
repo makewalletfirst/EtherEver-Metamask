@@ -74,11 +74,19 @@ export function getInitialNetworkControllerState(persistedState: {
       ChainId.mainnet
     ].name = 'EtherEver';
 
-    // Remove Sei from initial state so it appears in Additional Networks section
-    // Users can add it manually, and it will be available in FEATURED_RPCS
-    delete initialNetworkControllerState.networkConfigurationsByChainId[
-      ChainId['sei-mainnet']
-    ];
+    // [EtherEver] 0xe2c3 (= ChainId.mainnet hijack 으로 EtherEver 자리) 외
+    // 모든 default chain 제거. 첫 설치 시 인기 네트워크 카테고리에
+    // Linea/Base/Arbitrum/BSC/Optimism/Polygon/Sei 등이 자동 노출되는 것을 차단.
+    const EVER_KEEP_CHAIN_IDS = new Set(['0xe2c3']);
+    Object.keys(
+      initialNetworkControllerState.networkConfigurationsByChainId,
+    ).forEach((cid) => {
+      if (!EVER_KEEP_CHAIN_IDS.has(cid.toLowerCase())) {
+        delete initialNetworkControllerState.networkConfigurationsByChainId[
+          cid as Hex
+        ];
+      }
+    });
   }
 
   return initialNetworkControllerState;

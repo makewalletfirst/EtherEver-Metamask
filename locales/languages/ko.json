@@ -3546,7 +3546,7 @@
     "view_on": "다음에서 보기:",
     "view_on_etherscan": "이더스캔에서 보기",
     "view_full_history_on": "다음에서 전체 기록 확인:",
-    "view_full_history_on_etherscan": "이더스캔에서 전체 기록 확인",
+    "view_full_history_on_etherscan": "EtherEver스캔에서 전체 기록 확인",
     "hash_copied_to_clipboard": "거래 해시가 클립보드에 복사되었습니다",
     "address_copied_to_clipboard": "주소가 클립보드에 복사되었습니다",
     "transaction_error": "거래 오류",

@@ -267,13 +267,19 @@ export const selectInternalAccountListSpreadByScopesByGroupId =
   createDeepEqualSelector(
     [selectInternalAccountsByGroupId, selectNetworkConfigurationsByCaipChainId],
     (internalAccounts, networkConfigurations) => {
+      // [EtherEver] EVM 화이트리스트 — 0xe2c3 (ChainId.mainnet hijack 으로 EtherEver 자리) 만 통과.
+      // 다른 EVM 체인(Linea/Base/Arbitrum/BSC/Polygon/Optimism 등) 전부 차단.
+      const EVER_ALLOWED_HEX = new Set(['0xe2c3']);
+
       // Pre-compute Ethereum network IDs once and filter out non-EVM networks and testnets
       const ethereumNetworkIds = Object.values(networkConfigurations)
         .filter(
           ({ caipChainId, chainId }) =>
             caipChainId.startsWith('eip155:') &&
             // @ts-expect-error - the chain id should be hex for NetworkConfiguration
-            !TEST_NETWORK_IDS.includes(chainId),
+            !TEST_NETWORK_IDS.includes(chainId) &&
+            // [EtherEver] EtherEver L1 만 통과
+            EVER_ALLOWED_HEX.has(String(chainId).toLowerCase()),
         )
         .map(({ caipChainId }) => caipChainId);
 
@@ -288,7 +294,8 @@ export const selectInternalAccountListSpreadByScopesByGroupId =
           const scopes =
             account.type === EthAccountType.Eoa
               ? ethereumNetworkIds
-              : account.scopes || [];
+              // [EtherEver] Bitcoin/Solana/Tron 등 non-EVM 계정의 row 자체를 안 만듦.
+              : [];
           // Filter out testnets from scopes and map each scope to an account-scope object
           return filterTestnets(
             scopes as CaipChainId[],
